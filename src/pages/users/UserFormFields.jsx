@@ -265,6 +265,15 @@ const UserFormFields = ({ userData, currentUserRole, getAvailableRoles }) => {
         [roles.HR, roles.MANAGER, roles.CLIENT].includes(user.role)
     ) || [];
 
+  const organizationOptions = (organizations?.results || organizations || []).map(
+    (org) => ({
+      label: `${org.name} (${
+        org?.orgType?.charAt(0)?.toUpperCase() + org?.orgType?.slice(1)
+      })`,
+      value: org?.id,
+    })
+  );
+
   const onSubmit = async (data) => {
     const _updatedData = getUpdatedData(initialFormData, data);
     const { city, state, country, ...updatedData } = _updatedData;
@@ -942,17 +951,7 @@ const UserFormFields = ({ userData, currentUserRole, getAvailableRoles }) => {
                   Organization {!isSuperAdmin && "*"}
                 </Label>
                 <SearchableSelect
-                  options={
-                    organizations?.results.length
-                      ? organizations?.results?.map((org) => ({
-                          label: `${org.name} (${
-                            org?.orgType?.charAt(0)?.toUpperCase() +
-                            org?.orgType?.slice(1)
-                          })`,
-                          value: org?.id,
-                        }))
-                      : []
-                  }
+                  options={organizationOptions}
                   value={watchedValues.organization || ""}
                   onSelect={(value) =>
                     setValue("organization", value, { shouldValidate: true })
