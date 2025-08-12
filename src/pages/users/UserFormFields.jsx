@@ -9,7 +9,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getParsedUserRoles, getUpdatedData } from "@/utils/helpers";
-import { DEPARTMENTS, roles, countries } from "@/utils/constant";
+import {
+  DEPARTMENTS,
+  roles,
+  countries,
+  MARITAL_STATUSES,
+  BLOOD_GROUPS,
+} from "@/utils/constant";
+import { Switch } from "@/components/ui/switch";
 import {
   useCreateUserMutation,
   useGetAllUsersQuery,
@@ -95,6 +102,16 @@ const createUserFormSchema = (
           .min(2, "Employee ID must be at least 2 characters")
           .max(10, "Employee ID must be less than 10 characters"),
     bio: z.string().optional(),
+    fatherName: z.string().optional(),
+    cnic: z.string().optional(),
+    profileImage: z.string().optional(),
+    religion: z.string().optional(),
+    bloodGroup: z.string().optional(),
+    maritalStatus: z.string().optional(),
+    anyDisease: z.string().optional(),
+    takingMedicines: z.boolean().optional(),
+    qualification: z.string().optional(),
+    experience: z.string().optional(),
     organization:
       isSuperAdmin || isClient
         ? z.string().optional().nullable()
@@ -127,6 +144,16 @@ const initialFormDataState = {
   dateOfBirth: undefined,
   employeeId: "",
   bio: "",
+  fatherName: "",
+  cnic: "",
+  profileImage: "",
+  religion: "",
+  bloodGroup: "",
+  maritalStatus: "",
+  anyDisease: "",
+  takingMedicines: false,
+  qualification: "",
+  experience: "",
   organization: "",
   department: "",
   jobTitle: "",
@@ -196,6 +223,16 @@ const UserFormFields = ({ userData, currentUserRole, getAvailableRoles }) => {
           : undefined,
         employeeId: userData?.employeeId || "",
         bio: userData?.bio || "",
+        fatherName: userData?.fatherName || "",
+        cnic: userData?.cnic || "",
+        profileImage: userData?.profileImage || "",
+        religion: userData?.religion || "",
+        bloodGroup: userData?.bloodGroup || "",
+        maritalStatus: userData?.maritalStatus || "",
+        anyDisease: userData?.anyDisease || "",
+        takingMedicines: userData?.takingMedicines || false,
+        qualification: userData?.qualification || "",
+        experience: userData?.experience || "",
         organization: userData?.organization?.id || "",
         department: userData?.department || "",
         jobTitle: userData?.jobTitle || "",
@@ -465,6 +502,287 @@ const UserFormFields = ({ userData, currentUserRole, getAvailableRoles }) => {
                   {errors.employeeId.message}
                 </p>
               )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label
+                htmlFor="fatherName"
+                className="text-sm font-medium text-gray-700"
+              >
+                Father's Name
+              </Label>
+              <Input
+                id="fatherName"
+                type="text"
+                placeholder="Enter father's name"
+                {...register("fatherName")}
+                className={`h-11 border-gray-200 focus:border-blue-500 ${
+                  errors.fatherName ? "border-red-500 focus:border-red-500" : ""
+                }`}
+                disabled={isSubmitting}
+              />
+              {errors.fatherName && (
+                <p className="text-red-500 text-xs mt-1">
+                  {errors.fatherName.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label
+                htmlFor="cnic"
+                className="text-sm font-medium text-gray-700"
+              >
+                CNIC
+              </Label>
+              <Input
+                id="cnic"
+                type="text"
+                placeholder="Enter CNIC"
+                {...register("cnic")}
+                className={`h-11 border-gray-200 focus:border-blue-500 ${
+                  errors.cnic ? "border-red-500 focus:border-red-500" : ""
+                }`}
+                disabled={isSubmitting}
+              />
+              {errors.cnic && (
+                <p className="text-red-500 text-xs mt-1">
+                  {errors.cnic.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label
+                htmlFor="profileImage"
+                className="text-sm font-medium text-gray-700"
+              >
+                Profile Image URL
+              </Label>
+              <Input
+                id="profileImage"
+                type="text"
+                placeholder="Enter profile image URL"
+                {...register("profileImage")}
+                className={`h-11 border-gray-200 focus:border-blue-500 ${
+                  errors.profileImage
+                    ? "border-red-500 focus:border-red-500"
+                    : ""
+                }`}
+                disabled={isSubmitting}
+              />
+              {errors.profileImage && (
+                <p className="text-red-500 text-xs mt-1">
+                  {errors.profileImage.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label
+                htmlFor="religion"
+                className="text-sm font-medium text-gray-700"
+              >
+                Religion
+              </Label>
+              <Input
+                id="religion"
+                type="text"
+                placeholder="Enter religion"
+                {...register("religion")}
+                className={`h-11 border-gray-200 focus:border-blue-500 ${
+                  errors.religion ? "border-red-500 focus:border-red-500" : ""
+                }`}
+                disabled={isSubmitting}
+              />
+              {errors.religion && (
+                <p className="text-red-500 text-xs mt-1">
+                  {errors.religion.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label
+                htmlFor="bloodGroup"
+                className="text-sm font-medium text-gray-700"
+              >
+                Blood Group
+              </Label>
+              <Controller
+                name="bloodGroup"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger
+                      id="bloodGroup"
+                      className={`h-11 border-gray-200 focus:border-blue-500 ${
+                        errors.bloodGroup
+                          ? "border-red-500 focus:border-red-500"
+                          : ""
+                      }`}
+                    >
+                      <SelectValue placeholder="Select a blood group" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BLOOD_GROUPS.map((group) => (
+                        <SelectItem key={group.value} value={group.value}>
+                          {group.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.bloodGroup && (
+                <p className="text-red-500 text-xs mt-1">
+                  {errors.bloodGroup.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label
+                htmlFor="maritalStatus"
+                className="text-sm font-medium text-gray-700"
+              >
+                Marital Status
+              </Label>
+              <Controller
+                name="maritalStatus"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger
+                      id="maritalStatus"
+                      className={`h-11 border-gray-200 focus:border-blue-500 ${
+                        errors.maritalStatus
+                          ? "border-red-500 focus:border-red-500"
+                          : ""
+                      }`}
+                    >
+                      <SelectValue placeholder="Select marital status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MARITAL_STATUSES.map((status) => (
+                        <SelectItem key={status.value} value={status.value}>
+                          {status.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.maritalStatus && (
+                <p className="text-red-500 text-xs mt-1">
+                  {errors.maritalStatus.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label
+                htmlFor="qualification"
+                className="text-sm font-medium text-gray-700"
+              >
+                Qualification
+              </Label>
+              <Input
+                id="qualification"
+                type="text"
+                placeholder="Enter qualification"
+                {...register("qualification")}
+                className={`h-11 border-gray-200 focus:border-blue-500 ${
+                  errors.qualification
+                    ? "border-red-500 focus:border-red-500"
+                    : ""
+                }`}
+                disabled={isSubmitting}
+              />
+              {errors.qualification && (
+                <p className="text-red-500 text-xs mt-1">
+                  {errors.qualification.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label
+                htmlFor="experience"
+                className="text-sm font-medium text-gray-700"
+              >
+                Experience
+              </Label>
+              <Input
+                id="experience"
+                type="text"
+                placeholder="Enter experience"
+                {...register("experience")}
+                className={`h-11 border-gray-200 focus:border-blue-500 ${
+                  errors.experience
+                    ? "border-red-500 focus:border-red-500"
+                    : ""
+                }`}
+                disabled={isSubmitting}
+              />
+              {errors.experience && (
+                <p className="text-red-500 text-xs mt-1">
+                  {errors.experience.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <Label
+                htmlFor="anyDisease"
+                className="text-sm font-medium text-gray-700"
+              >
+                Any Disease
+              </Label>
+              <textarea
+                id="anyDisease"
+                rows={3}
+                placeholder="Enter any disease details"
+                {...register("anyDisease")}
+                className="flex w-full rounded-md border border-gray-200 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                disabled={isSubmitting}
+              />
+              {errors.anyDisease && (
+                <p className="text-red-500 text-xs mt-1">
+                  {errors.anyDisease.message}
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center space-x-2 pt-4">
+              <Controller
+                name="takingMedicines"
+                control={control}
+                render={({ field }) => (
+                  <Switch
+                    id="takingMedicines"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    disabled={isSubmitting}
+                  />
+                )}
+              />
+              <Label
+                htmlFor="takingMedicines"
+                className="text-sm font-medium text-gray-700"
+              >
+                Currently Taking Any Medicines?
+              </Label>
             </div>
           </div>
 
