@@ -72,6 +72,27 @@ export const DEPARTMENTS = [
   { value: "logisticsSupplyChain", label: "Logistics & Supply Chain" },
 ];
 
+export const RELIGIONS = [
+  { value: "islam", label: "Islam" },
+  { value: "christianity", label: "Christianity" },
+  { value: "hinduism", label: "Hinduism" },
+  { value: "buddhism", label: "Buddhism" },
+  { value: "sikhism", label: "Sikhism" },
+  { value: "judaism", label: "Judaism" },
+  { value: "other", label: "Other" },
+];
+
+export const BLOOD_GROUPS = [
+  { value: "A+", label: "A+" },
+  { value: "A-", label: "A-" },
+  { value: "B+", label: "B+" },
+  { value: "B-", label: "B-" },
+  { value: "AB+", label: "AB+" },
+  { value: "AB-", label: "AB-" },
+  { value: "O+", label: "O+" },
+  { value: "O-", label: "O-" },
+];
+
 export const leavesType = {
   SICK: "sick",
   CASUAL: "casual",

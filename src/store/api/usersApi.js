@@ -44,6 +44,14 @@ export const usersApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: (result, error, id) => [apiTags.USERS],
     }),
+    uploadProfileImage: builder.mutation({
+      query: ({ id, formData }) => ({
+        url: `users/${id}/profile`,
+        method: "POST",
+        data: formData,
+      }),
+      invalidatesTags: (result, error, { id }) => [{ type: apiTags.USERS, id }],
+    }),
     // Upload user document
     uploadUserDocument: builder.mutation({
       query: ({ id, formData }) => ({
@@ -88,6 +96,7 @@ export const {
   useCreateUserMutation,
   useUpdateUserMutation,
   useDeleteUserMutation,
+  useUploadProfileImageMutation,
   useUploadUserDocumentMutation,
   useDeleteUserDocumentMutation,
   useChangePasswordMutation,

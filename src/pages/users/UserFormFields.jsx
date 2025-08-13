@@ -8,12 +8,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { getParsedUserRoles, getUpdatedData } from "@/utils/helpers";
-import { DEPARTMENTS, roles, countries } from "@/utils/constant";
+import {
+  DEPARTMENTS,
+  roles,
+  countries,
+  RELIGIONS,
+  BLOOD_GROUPS,
+} from "@/utils/constant";
 import {
   useCreateUserMutation,
   useGetAllUsersQuery,
   useUpdateUserMutation,
+  useUploadProfileImageMutation,
 } from "@/store/api/usersApi";
 import { useGetAllOrganizationsQuery } from "@/store/api/organizationsApi";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -33,6 +41,14 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { format } from "date-fns";
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ACCEPTED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+];
 
 // Base Zod validation schema
 const createUserFormSchema = (
@@ -113,6 +129,38 @@ const createUserFormSchema = (
     }),
     role: z.string().min(1, "User role is required"),
     reportsTo: z.string().optional(),
+    fatherName: z.string().optional(),
+    cnic: z
+      .string()
+      .optional()
+      .refine((val) => !val || /^\d{5}-\d{7}-\d{1}$/.test(val), {
+        message: "Invalid CNIC format. Expected format: XXXXX-XXXXXXX-X",
+      }),
+    profileImage: z
+      .any()
+      .optional()
+      .refine(
+        (files) =>
+          !files ||
+          files.length === 0 ||
+          (files instanceof FileList && files[0].size <= MAX_FILE_SIZE),
+        `Max file size is 5MB.`
+      )
+      .refine(
+        (files) =>
+          !files ||
+          files.length === 0 ||
+          (files instanceof FileList &&
+            ACCEPTED_IMAGE_TYPES.includes(files[0].type)),
+        ".jpg, .jpeg, .png and .webp files are accepted."
+      ),
+    religion: z.string().optional(),
+    bloodGroup: z.string().optional(),
+    maritalStatus: z.string().optional(),
+    anyDisease: z.string().optional(),
+    takingMedicines: z.boolean().optional(),
+    qualification: z.string().optional(),
+    experience: z.string().optional(),
   });
 
 const initialFormDataState = {
@@ -133,6 +181,16 @@ const initialFormDataState = {
   startDate: undefined,
   role: "",
   reportsTo: "",
+  fatherName: "",
+  cnic: "",
+  profileImage: undefined,
+  religion: "",
+  bloodGroup: "",
+  maritalStatus: "",
+  anyDisease: "",
+  takingMedicines: false,
+  qualification: "",
+  experience: "",
 };
 
 const UserFormFields = ({ userData, currentUserRole, getAvailableRoles }) => {
@@ -140,9 +198,11 @@ const UserFormFields = ({ userData, currentUserRole, getAvailableRoles }) => {
   const { id } = useParams();
   const [createUser, { isLoading: createLoading }] = useCreateUserMutation();
   const [updateUser, { isLoading: updateLoading }] = useUpdateUserMutation();
+  const [uploadProfileImage, { isLoading: isUploadingImage }] =
+    useUploadProfileImageMutation();
   const [userSearch, setUserSearch] = useState("");
   const [organizationSearch, setOrganizationSearch] = useState("");
-  const isSubmitting = createLoading || updateLoading;
+  const isSubmitting = createLoading || updateLoading || isUploadingImage;
   const { data: allUsers, isFetching: usersLoading } = useGetAllUsersQuery({
     limit: 20,
     ...(userSearch && { name: "firstName", value: userSearch }),
@@ -204,6 +264,15 @@ const UserFormFields = ({ userData, currentUserRole, getAvailableRoles }) => {
           : undefined,
         role: userData?.role || "",
         reportsTo: userData?.reportsTo?.id || "",
+        fatherName: userData?.fatherName || "",
+        cnic: userData?.cnic || "",
+        religion: userData?.religion || "",
+        bloodGroup: userData?.bloodGroup || "",
+        maritalStatus: userData?.maritalStatus || "",
+        anyDisease: userData?.anyDisease || "",
+        takingMedicines: userData?.takingMedicines || false,
+        qualification: userData?.qualification || "",
+        experience: userData?.experience || "",
       };
       setInitialFormData(_userData);
       reset(_userData);
@@ -229,31 +298,50 @@ const UserFormFields = ({ userData, currentUserRole, getAvailableRoles }) => {
     ) || [];
 
   const onSubmit = async (data) => {
-    const _updatedData = getUpdatedData(initialFormData, data);
-    const { city, state, country, ...updatedData } = _updatedData;
-    if (city || state || country) {
-      updatedData.address = {};
-      if (city) updatedData.address.city = city;
-      if (state) updatedData.address.state = state;
-      if (country) updatedData.address.country = country;
-    }
+    const { profileImage, ...userData } = data;
 
-    if (updatedData.phone) {
-      updatedData.phone = updatedData.phone.replace(/\s/g, "");
+    const payload = { ...userData };
+    if (userData.city || userData.state || userData.country) {
+      payload.address = {
+        city: userData.city,
+        state: userData.state,
+        country: userData.country,
+      };
     }
+    delete payload.city;
+    delete payload.state;
+    delete payload.country;
+
     try {
+      let userResult;
       if (id) {
-        await updateUser({ id, ...updatedData }).unwrap();
-        toast.success("User updated successfully!");
-        navigate("/users");
+        // Update user data first
+        userResult = await updateUser({ id, ...payload }).unwrap();
+        toast.success("User data updated successfully!");
       } else {
-        await createUser(updatedData).unwrap();
+        // Create user first
+        userResult = await createUser(payload).unwrap();
         toast.success("User created successfully!");
-        navigate("/users");
       }
+
+      // Then, upload profile image if it exists
+      if (profileImage && profileImage.length > 0) {
+        const imageFormData = new FormData();
+        imageFormData.append("profileImage", profileImage[0]);
+
+        // Use existing id, or the id from the create response
+        const userId = id || userResult?.user?.id;
+
+        if (userId) {
+          await uploadProfileImage({ id: userId, formData: imageFormData }).unwrap();
+          toast.success("Profile image uploaded successfully!");
+        }
+      }
+
+      navigate("/users");
     } catch (error) {
       toast.error(
-        error?.data?.message || "Failed to update user. Please try again."
+        error?.data?.message || "An error occurred during the process."
       );
     }
   };
@@ -465,6 +553,227 @@ const UserFormFields = ({ userData, currentUserRole, getAvailableRoles }) => {
                   {errors.employeeId.message}
                 </p>
               )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label
+                htmlFor="fatherName"
+                className="text-sm font-medium text-gray-700"
+              >
+                Father's Name
+              </Label>
+              <Input
+                id="fatherName"
+                type="text"
+                placeholder="Enter father's name"
+                {...register("fatherName")}
+                className="h-11 border-gray-200 focus:border-blue-500"
+                disabled={isSubmitting}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label
+                htmlFor="cnic"
+                className="text-sm font-medium text-gray-700"
+              >
+                CNIC
+              </Label>
+              <Input
+                id="cnic"
+                type="text"
+                placeholder="Enter CNIC"
+                {...register("cnic")}
+                className={`h-11 border-gray-200 focus:border-blue-500 ${
+                  errors.cnic ? "border-red-500 focus:border-red-500" : ""
+                }`}
+                disabled={isSubmitting}
+              />
+              {errors.cnic && (
+                <p className="text-red-500 text-xs mt-1">
+                  {errors.cnic.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label
+                htmlFor="religion"
+                className="text-sm font-medium text-gray-700"
+              >
+                Religion
+              </Label>
+              <Controller
+                name="religion"
+                control={control}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger className="h-11 border-gray-200 focus:border-blue-500">
+                      <SelectValue placeholder="Select Religion" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {RELIGIONS.map((religion) => (
+                        <SelectItem key={religion.value} value={religion.value}>
+                          {religion.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label
+                htmlFor="bloodGroup"
+                className="text-sm font-medium text-gray-700"
+              >
+                Blood Group
+              </Label>
+              <Controller
+                name="bloodGroup"
+                control={control}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger className="h-11 border-gray-200 focus:border-blue-500">
+                      <SelectValue placeholder="Select Blood Group" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BLOOD_GROUPS.map((group) => (
+                        <SelectItem key={group.value} value={group.value}>
+                          {group.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label
+                htmlFor="maritalStatus"
+                className="text-sm font-medium text-gray-700"
+              >
+                Marital Status
+              </Label>
+              <Controller
+                name="maritalStatus"
+                control={control}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger className="h-11 border-gray-200 focus:border-blue-500">
+                      <SelectValue placeholder="Select Marital Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="single">Single</SelectItem>
+                      <SelectItem value="married">Married</SelectItem>
+                      <SelectItem value="divorced">Divorced</SelectItem>
+                      <SelectItem value="widowed">Widowed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label
+                htmlFor="anyDisease"
+                className="text-sm font-medium text-gray-700"
+              >
+                Any Disease
+              </Label>
+              <Input
+                id="anyDisease"
+                type="text"
+                placeholder="Enter any disease"
+                {...register("anyDisease")}
+                className="h-11 border-gray-200 focus:border-blue-500"
+                disabled={isSubmitting}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label
+                htmlFor="qualification"
+                className="text-sm font-medium text-gray-700"
+              >
+                Qualification
+              </Label>
+              <Input
+                id="qualification"
+                type="text"
+                placeholder="Enter qualification"
+                {...register("qualification")}
+                className="h-11 border-gray-200 focus:border-blue-500"
+                disabled={isSubmitting}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label
+                htmlFor="experience"
+                className="text-sm font-medium text-gray-700"
+              >
+                Experience
+              </Label>
+              <Input
+                id="experience"
+                type="text"
+                placeholder="Enter experience"
+                {...register("experience")}
+                className="h-11 border-gray-200 focus:border-blue-500"
+                disabled={isSubmitting}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label
+                htmlFor="profileImage"
+                className="text-sm font-medium text-gray-700"
+              >
+                {id ? "Upload New Profile Image" : "Profile Image"}
+              </Label>
+              <Input
+                id="profileImage"
+                type="file"
+                accept="image/png, image/jpeg, image/webp"
+                {...register("profileImage")}
+                className="h-11 border-gray-200 focus:border-blue-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                disabled={isSubmitting}
+              />
+              {errors.profileImage && (
+                <p className="text-red-500 text-xs mt-1">
+                  {errors.profileImage.message}
+                </p>
+              )}
+              {id && userData?.profileImage && (
+                <div className="mt-2">
+                  <p className="text-sm text-gray-500 mb-1">Current Image:</p>
+                  <img
+                    src={userData.profileImage}
+                    alt="Current Profile"
+                    className="h-16 w-16 rounded-full object-cover"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center space-x-2 pt-8">
+              <Controller
+                name="takingMedicines"
+                control={control}
+                render={({ field }) => (
+                  <Switch
+                    id="takingMedicines"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                )}
+              />
+              <Label htmlFor="takingMedicines">Taking any medicines?</Label>
             </div>
           </div>
 
